@@ -358,25 +358,26 @@ if barstate.islast
         int midTolEnd = midTouchTolTicks
         int outerTolStart = autoTolerance ? math.max(outerTouchTolTicks - autoOuterTolRange, 0) : outerTouchTolTicks
         int outerTolEnd = autoTolerance ? math.min(outerTouchTolTicks + autoOuterTolRange, 20) : outerTouchTolTicks
-        for xCur = p1x + 10 to scanEnd
+        float sumX = 0.0
+        float sumY = 0.0
+        float sumXY = 0.0
+        float sumXX = 0.0
+
+        for xCur = p1x to scanEnd
+            float x = xCur - p1x
+            int off = bar_index - xCur
+            float y = off >= 0 and off <= safeHist ? close[off] : close
+
+            sumX += x
+            sumY += y
+            sumXY += x * y
+            sumXX += x * x
+
             int curLen = xCur - p1x + 1
             if curLen >= 10
-                float sumX = 0.0
-                float sumY = 0.0
-                float sumXY = 0.0
-                float sumXX = 0.0
-                for xb = p1x to xCur
-                    int off = bar_index - xb
-                    float x = xb - p1x
-                    float y = off >= 0 and off <= safeHist ? close[off] : close
-                    sumX += x
-                    sumY += y
-                    sumXY += x * y
-                    sumXX += x * x
                 float denom = curLen * sumXX - sumX * sumX
                 float slope = denom != 0 ? (curLen * sumXY - sumX * sumY) / denom : 0.0
                 float intercept = curLen > 0 ? (sumY - slope * sumX) / curLen : close
-
                 float candidateBestScore = na
                 float candidateBestWidth = na
                 string candidateBestKind = ""
