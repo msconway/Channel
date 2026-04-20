@@ -33,6 +33,7 @@ innerRailWeight = input.float(2.0, "Inner Rail Weight", minval=0, step=0.5)
 midlineWeight   = input.float(1.0, "Midline Weight", minval=0, step=0.5)
 insideWeight    = input.float(0.5, "Inside % Weight", minval=0, step=0.5)
 lengthWeight    = input.float(0.05, "Length Weight", minval=0, step=0.01)
+innerOuterRatio = input.float(1.1, "Best outer/inner min ratio", minval = 1.0, step = 0.05)
 
 showRegression = true
 extendBestRight = input.bool(true, "Extend Best Right")
@@ -517,7 +518,8 @@ if barstate.islast
                             float railStart = math.min(curExpandUp, curExpandDn)
                             float railExtreme = math.max(curExpandUp, curExpandDn)
                             curExpandHits := f_count_touch_hits(p1x, xCur, slope, intercept, railExtreme, railExtreme, midTol, outerTol, math.min(safeHist, xCur - p1x + 1), false, true)
-                            if fullInsidePct >= minInsidePct
+                            bool curHasDistinctOuter = curExpandUp > curBestWidth * innerOuterRatio or curExpandDn > curBestWidth * innerOuterRatio
+                            if fullInsidePct >= minInsidePct and curHasDistinctOuter
                                 float score = curExpandHits * outerRailWeight + curBestRailHits * innerRailWeight + midTouches * midlineWeight + fullInsidePct * insideWeight + curLen * lengthWeight
                                 if na(candidateBestScore) or score > candidateBestScore
                                     candidateBestScore := score
