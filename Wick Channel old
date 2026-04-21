@@ -453,39 +453,57 @@ if barstate.islast
                                 if not foundD
                                     array.push(lowBins, keyD)
                                     array.push(lowCounts, 1)
-
+  
                         float curBestUpper = na
                         float curBestLower = na
                         string curBestKind = ""
-                        int curBestRailHits = 0
+                        int bestBinCount = 0
+
                         if array.size(highBins) > 0 and array.size(highCounts) > 0
                             for i = 0 to array.size(highBins) - 1
                                 if i < array.size(highCounts)
                                     int cnt = array.get(highCounts, i)
-                                    if cnt >= 2 and cnt > curBestRailHits
-                                        curBestRailHits := cnt
+                                    if cnt >= 2 and cnt > bestBinCount
+                                        bestBinCount := cnt
                                         curBestUpper := array.get(highBins, i)
                                         curBestKind := "H"
+
                         if array.size(lowBins) > 0 and array.size(lowCounts) > 0
                             for i = 0 to array.size(lowBins) - 1
                                 if i < array.size(lowCounts)
                                     int cnt = array.get(lowCounts, i)
-                                    if cnt >= 2 and cnt > curBestRailHits
-                                        curBestRailHits := cnt
+                                    if cnt >= 2 and cnt > bestBinCount
+                                        bestBinCount := cnt
                                         curBestLower := array.get(lowBins, i)
                                         curBestKind := "L"
-                        float curBestWidth = na(curBestUpper) ? curBestLower : na(curBestLower) ? curBestUpper : math.max(curBestUpper, curBestLower)
-                        if not na(curBestWidth)
-                            curBestRailHits := f_count_touch_hits(p1x, xCur, slope, intercept, nz(curBestUpper, curBestWidth), nz(curBestLower, curBestWidth), midTol, outerTol, safeHist, false, true)
+
+                        float evalIntercept = intercept
+                        float evalWidth = na
+                        float evalInnerUp = curBestUpper
+                        float evalInnerDn = curBestLower
+
+                        if not na(curBestUpper) and not na(curBestLower)
+                            float recenterShift = (curBestUpper - curBestLower) * 0.5
+                            float recenterWidth = (curBestUpper + curBestLower) * 0.5
+                            evalIntercept := intercept + recenterShift
+                            evalWidth := recenterWidth
+                            evalInnerUp := recenterWidth
+                            evalInnerDn := recenterWidth
+                        else
+                            evalWidth := na(curBestUpper) ? curBestLower : na(curBestLower) ? curBestUpper : na
+
+                        int curBestRailHits = 0
+                        if not na(evalWidth)
+                            curBestRailHits := f_count_touch_hits(p1x, xCur, slope, evalIntercept, nz(evalInnerUp, evalWidth), nz(evalInnerDn, evalWidth), midTol, outerTol, safeHist, false, true)
 
                         float insideCnt = 0.0
                         float outsideCnt = 0.0
-                        if not na(curBestWidth)
+                        if not na(evalWidth)
                             for xb = p1x to xCur
                                 int off = bar_index - xb
-                                float midY = intercept + slope * (xb - p1x)
-                                float topY = midY + nz(curBestUpper, curBestWidth)
-                                float botY = midY - nz(curBestLower, curBestWidth)
+                                float midY = evalIntercept + slope * (xb - p1x)
+                                float topY = midY + nz(evalInnerUp, evalWidth)
+                                float botY = midY - nz(evalInnerDn, evalWidth)
                                 float bodyLo = math.min(open[off], close[off])
                                 float bodyHi = math.max(open[off], close[off])
                                 if bodyLo >= botY and bodyHi <= topY
@@ -498,9 +516,9 @@ if barstate.islast
                             float fullOutsideCnt = 0.0
                             for xbFull = p1x to xEnd
                                 int offFull = bar_index - xbFull
-                                float midYFull = intercept + slope * (xbFull - p1x)
-                                float topYFull = midYFull + nz(curBestUpper, curBestWidth)
-                                float botYFull = midYFull - nz(curBestLower, curBestWidth)
+                                float midYFull = evalIntercept + slope * (xbFull - p1x)
+                                float topYFull = midYFull + nz(evalInnerUp, evalWidth)
+                                float botYFull = midYFull - nz(evalInnerDn, evalWidth)
                                 float bodyLoFull = math.min(open[offFull], close[offFull])
                                 float bodyHiFull = math.max(open[offFull], close[offFull])
                                 if bodyLoFull >= botYFull and bodyHiFull <= topYFull
@@ -514,14 +532,14 @@ if barstate.islast
                             float curExpandDn = na
                             int curExpandHits = 0
 
-                            if not na(curBestWidth)
+                            if not na(evalWidth)
                                 if array.size(highBins) > 0 and array.size(highCounts) > 0
                                     int maxLoopUp = math.min(array.size(highBins), 20)
                                     for i = 0 to maxLoopUp - 1
                                         if i < array.size(highCounts)
                                             float offP = array.get(highBins, i)
                                             int cntP = array.get(highCounts, i)
-                                            if cntP >= 2 and offP > curBestWidth * innerOuterRatio
+                                            if cntP >= 2 and offP > evalWidth * innerOuterRatio
                                                 curExpandUp := na(curExpandUp) ? offP : math.max(curExpandUp, offP)
 
                                 if array.size(lowBins) > 0 and array.size(lowCounts) > 0
@@ -530,7 +548,7 @@ if barstate.islast
                                         if i < array.size(lowCounts)
                                             float offP = array.get(lowBins, i)
                                             int cntP = array.get(lowCounts, i)
-                                            if cntP >= 2 and offP > curBestWidth * innerOuterRatio
+                                            if cntP >= 2 and offP > evalWidth * innerOuterRatio
                                                 curExpandDn := na(curExpandDn) ? offP : math.max(curExpandDn, offP)
 
                             bool hasUpperOuter = not na(curExpandUp)
@@ -540,13 +558,13 @@ if barstate.islast
                             if curHasDistinctOuter
                                 float scoreExpandUp = hasUpperOuter ? curExpandUp : na
                                 float scoreExpandDn = hasLowerOuter ? curExpandDn : na
-                                curExpandHits := f_count_touch_hits(p1x,xCur,slope,intercept, nz(scoreExpandUp, 10e10), nz(scoreExpandDn, 10e10), midTol,outerTol, math.min(safeHist, xCur - p1x + 1), false, true)
-
+                                curExpandHits := f_count_touch_hits(p1x, xCur, slope, evalIntercept, nz(scoreExpandUp, 10e10), nz(scoreExpandDn, 10e10), midTol, outerTol, math.min(safeHist, xCur - p1x + 1), false, true)
+                                    
                             if fullInsidePct >= minInsidePct and curHasDistinctOuter
                                 float score = curExpandHits * outerRailWeight + curBestRailHits * innerRailWeight + midTouches * midlineWeight + fullInsidePct * insideWeight + curLen * lengthWeight
                                 if na(candidateBestScore) or score > candidateBestScore
                                     candidateBestScore := score
-                                    candidateBestWidth := curBestWidth
+                                    candidateBestWidth := evalWidth
                                     candidateBestKind := curBestKind
                                     candidateBestMidTouches := midTouches
                                     candidateBestRailHits := curBestRailHits
@@ -561,8 +579,8 @@ if barstate.islast
                                     candidateLowCounts := array.copy(lowCounts)
                                     candidateBestMidTolTicks := midTolTicks
                                     candidateBestOuterTolTicks := outerTolTicks
-                                    candidateBestInnerUp := curBestUpper
-                                    candidateBestInnerDn := curBestLower
+                                    candidateBestInnerUp := evalInnerUp
+                                    candidateBestInnerDn := evalInnerDn
                                     candidateBestExpandUp := curExpandUp
                                     candidateBestExpandDn := curExpandDn
                 if not na(candidateBestScore)
@@ -613,21 +631,7 @@ if barstate.islast
                         bestExpandHits := candidateBestExpandHits
                         bestChosenMidTolTicks := candidateBestMidTolTicks
                         bestChosenOuterTolTicks := candidateBestOuterTolTicks
-        if not na(bestInnerUp) and not na(bestInnerDn)
-            float bestRecenterShift = (bestInnerUp - bestInnerDn) * 0.5
-            float bestRecenterWidth = (bestInnerUp + bestInnerDn) * 0.5
-            bestIntercept += bestRecenterShift
-            bestWidth := bestRecenterWidth
-            bestInnerUp := bestRecenterWidth
-            bestInnerDn := bestRecenterWidth
 
-        if not na(newInnerUp) and not na(newInnerDn)
-            float newRecenterShift = (newInnerUp - newInnerDn) * 0.5
-            float newRecenterWidth = (newInnerUp + newInnerDn) * 0.5
-            newIntercept += newRecenterShift
-            newWidth := newRecenterWidth
-            newInnerUp := newRecenterWidth
-            newInnerDn := newRecenterWidth
         float bestMidTol = nz(bestChosenMidTolTicks, midTouchTolTicks) * syminfo.mintick
         float bestOuterTol = nz(bestChosenOuterTolTicks, outerTouchTolTicks) * syminfo.mintick
         float newMidTol = nz(newChosenMidTolTicks, midTouchTolTicks) * syminfo.mintick
@@ -728,7 +732,25 @@ if barstate.islast
 
             newExpandHits := (not na(newExpandUp) or not na(newExpandDn)) ? f_count_touch_hits(p1x, xEnd, newSlope, newIntercept, nz(newExpandUp, 10e10), nz(newExpandDn, 10e10), newMidTol, newOuterTol, safeHist, false, true) : 0
 
-
+        if not na(bestSlope) and not na(bestWidth)
+            lastValidBestSlope := bestSlope
+            lastValidBestIntercept := bestIntercept
+            lastValidBestWidth := bestWidth
+            lastValidBestInnerUp := bestInnerUp
+            lastValidBestInnerDn := bestInnerDn
+            lastValidBestExpandUp := bestExpandUp
+            lastValidBestExpandDn := bestExpandDn
+            lastValidBestKind := bestKind
+            lastValidBestMidTouches := bestMidTouches
+            lastValidBestRailHits := bestRailHits
+            lastValidBestInsideCnt := bestInsideCnt
+            lastValidBestOutsideCnt := bestOutsideCnt
+            lastValidBestInsidePct := bestInsidePct
+            lastValidBestLen := bestLen
+            lastValidBestTotalBars := bestTotalBars
+            lastValidBestRecalcInsideCnt := bestRecalcInsideCnt
+            lastValidBestRecalcOutsideCnt := bestRecalcOutsideCnt
+            lastValidBestRecalcInsidePct := bestRecalcInsidePct
         if na(bestSlope) and not na(lastValidBestSlope)
             bestSlope := lastValidBestSlope
             bestIntercept := lastValidBestIntercept
