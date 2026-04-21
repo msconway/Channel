@@ -124,6 +124,8 @@ var label statusLbl = na
 var float lastValidBestSlope = na
 var float lastValidBestIntercept = na
 var float lastValidBestWidth = na
+var float lastValidBestInnerUp = na
+var float lastValidBestInnerDn = na
 var float lastValidBestExpandUp = na
 var float lastValidBestExpandDn = na
 var string lastValidBestKind = na
@@ -312,6 +314,8 @@ if barstate.islast
         float bestSlope = na
         float bestIntercept = na
         float bestWidth = na
+        float bestInnerUp = na
+        float bestInnerDn = na
         string bestKind = ""
         int bestMidTouches = 0
         int bestRailHits = 0
@@ -336,6 +340,8 @@ if barstate.islast
         float newSlope = na
         float newIntercept = na
         float newWidth = na
+        float newInnerUp = na
+        float newInnerDn = na
         string newKind = ""
         int newMidTouches = 0
         int newRailHits = 0
@@ -397,6 +403,8 @@ if barstate.islast
                 int[] candidateLowCounts = array.new_int()
                 int candidateBestMidTolTicks = na
                 int candidateBestOuterTolTicks = na
+                float candidateBestInnerUp = na
+                float candidateBestInnerDn = na
                 float candidateBestExpandUp = na
                 float candidateBestExpandDn = na
                 for midTolTicks = midTolStart to midTolEnd
@@ -553,6 +561,8 @@ if barstate.islast
                                     candidateLowCounts := array.copy(lowCounts)
                                     candidateBestMidTolTicks := midTolTicks
                                     candidateBestOuterTolTicks := outerTolTicks
+                                    candidateBestInnerUp := curBestUpper
+                                    candidateBestInnerDn := curBestLower
                                     candidateBestExpandUp := curExpandUp
                                     candidateBestExpandDn := curExpandDn
                 if not na(candidateBestScore)
@@ -560,6 +570,8 @@ if barstate.islast
                     newSlope := slope
                     newIntercept := intercept
                     newWidth := candidateBestWidth
+                    newInnerUp := candidateBestInnerUp
+                    newInnerDn := candidateBestInnerDn
                     newKind := candidateBestKind
                     newMidTouches := candidateBestMidTouches
                     newRailHits := candidateBestRailHits
@@ -582,6 +594,8 @@ if barstate.islast
                         bestSlope := slope
                         bestIntercept := intercept
                         bestWidth := candidateBestWidth
+                        bestInnerUp := candidateBestInnerUp
+                        bestInnerDn := candidateBestInnerDn
                         bestKind := candidateBestKind
                         bestMidTouches := candidateBestMidTouches
                         bestRailHits := candidateBestRailHits
@@ -608,8 +622,8 @@ if barstate.islast
             for xb = p1x to xEnd
                 int off = bar_index - xb
                 float midY = bestIntercept + bestSlope * (xb - p1x)
-                float topY = midY + bestWidth
-                float botY = midY - bestWidth
+                float topY = midY + nz(bestInnerUp, bestWidth)
+                float botY = midY - nz(bestInnerDn, bestWidth)
                 float bodyLo = math.min(open[off], close[off])
                 float bodyHi = math.max(open[off], close[off])
                 if bodyLo >= botY and bodyHi <= topY
@@ -647,8 +661,8 @@ if barstate.islast
                 bool pivotLowDbg = f_is_pivot_low_off(offDbg, safeHist)
                 bool midTouchHighDbg = pivotHighDbg and offDbg >= 0 and offDbg <= safeHist and math.abs(high[offDbg] - midYDbg) <= bestMidTol
                 bool midTouchLowDbg = pivotLowDbg and offDbg >= 0 and offDbg <= safeHist and math.abs(low[offDbg] - midYDbg) <= bestMidTol
-                bool topRailTouchDbg = pivotHighDbg and offDbg >= 0 and offDbg <= safeHist and math.abs(high[offDbg] - (midYDbg + bestWidth)) <= bestOuterTol
-                bool botRailTouchDbg = pivotLowDbg and offDbg >= 0 and offDbg <= safeHist and math.abs(low[offDbg] - (midYDbg - bestWidth)) <= bestOuterTol
+                bool topRailTouchDbg = pivotHighDbg and offDbg >= 0 and offDbg <= safeHist and math.abs(high[offDbg] - (midYDbg + nz(bestInnerUp, bestWidth))) <= bestOuterTol
+                bool botRailTouchDbg = pivotLowDbg and offDbg >= 0 and offDbg <= safeHist and math.abs(low[offDbg] - (midYDbg - nz(bestInnerDn, bestWidth))) <= bestOuterTol
                 bool topExpandTouchDbg = pivotHighDbg and offDbg >= 0 and offDbg <= safeHist and not na(bestExpandUp) and math.abs(high[offDbg] - (midYDbg + bestExpandUp)) <= bestOuterTol
                 bool botExpandTouchDbg = pivotLowDbg and offDbg >= 0 and offDbg <= safeHist and not na(bestExpandDn) and math.abs(low[offDbg] - (midYDbg - bestExpandDn)) <= bestOuterTol
                 if midTouchHighDbg
@@ -668,8 +682,8 @@ if barstate.islast
             for xb = p1x to xEnd
                 int off = bar_index - xb
                 float midY = newIntercept + newSlope * (xb - p1x)
-                float topY = midY + newWidth
-                float botY = midY - newWidth
+                float topY = midY + nz(newInnerUp, newWidth)
+                float botY = midY - nz(newInnerDn, newWidth)
                 float bodyLo = math.min(open[off], close[off])
                 float bodyHi = math.max(open[off], close[off])
                 if bodyLo >= botY and bodyHi <= topY
@@ -704,6 +718,8 @@ if barstate.islast
             bestSlope := lastValidBestSlope
             bestIntercept := lastValidBestIntercept
             bestWidth := lastValidBestWidth
+            bestInnerUp := lastValidBestInnerUp
+            bestInnerDn := lastValidBestInnerDn
             bestExpandUp := lastValidBestExpandUp
             bestExpandDn := lastValidBestExpandDn
             bestKind := lastValidBestKind
