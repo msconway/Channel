@@ -613,6 +613,21 @@ if barstate.islast
                         bestExpandHits := candidateBestExpandHits
                         bestChosenMidTolTicks := candidateBestMidTolTicks
                         bestChosenOuterTolTicks := candidateBestOuterTolTicks
+        if not na(bestInnerUp) and not na(bestInnerDn)
+            float bestRecenterShift = (bestInnerUp - bestInnerDn) * 0.5
+            float bestRecenterWidth = (bestInnerUp + bestInnerDn) * 0.5
+            bestIntercept += bestRecenterShift
+            bestWidth := bestRecenterWidth
+            bestInnerUp := bestRecenterWidth
+            bestInnerDn := bestRecenterWidth
+
+        if not na(newInnerUp) and not na(newInnerDn)
+            float newRecenterShift = (newInnerUp - newInnerDn) * 0.5
+            float newRecenterWidth = (newInnerUp + newInnerDn) * 0.5
+            newIntercept += newRecenterShift
+            newWidth := newRecenterWidth
+            newInnerUp := newRecenterWidth
+            newInnerDn := newRecenterWidth
         float bestMidTol = nz(bestChosenMidTolTicks, midTouchTolTicks) * syminfo.mintick
         float bestOuterTol = nz(bestChosenOuterTolTicks, outerTouchTolTicks) * syminfo.mintick
         float newMidTol = nz(newChosenMidTolTicks, midTouchTolTicks) * syminfo.mintick
