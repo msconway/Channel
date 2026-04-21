@@ -388,6 +388,7 @@ if barstate.islast
                 float slope = denom != 0 ? (curLen * sumXY - sumX * sumY) / denom : 0.0
                 float intercept = curLen > 0 ? (sumY - slope * sumX) / curLen : close
                 float candidateBestScore = na
+                float candidateBestIntercept = na
                 float candidateBestWidth = na
                 string candidateBestKind = ""
                 int candidateBestMidTouches = 0
@@ -564,6 +565,7 @@ if barstate.islast
                                 float score = curExpandHits * outerRailWeight + curBestRailHits * innerRailWeight + midTouches * midlineWeight + fullInsidePct * insideWeight + curLen * lengthWeight
                                 if na(candidateBestScore) or score > candidateBestScore
                                     candidateBestScore := score
+                                    candidateBestIntercept := evalIntercept
                                     candidateBestWidth := evalWidth
                                     candidateBestKind := curBestKind
                                     candidateBestMidTouches := midTouches
@@ -586,7 +588,7 @@ if barstate.islast
                 if not na(candidateBestScore)
                     newScore := candidateBestScore
                     newSlope := slope
-                    newIntercept := intercept
+                    newIntercept := candidateBestIntercept
                     newWidth := candidateBestWidth
                     newInnerUp := candidateBestInnerUp
                     newInnerDn := candidateBestInnerDn
@@ -610,7 +612,7 @@ if barstate.islast
                     if na(bestScore) or candidateBestScore > bestScore
                         bestScore := candidateBestScore
                         bestSlope := slope
-                        bestIntercept := intercept
+                        bestIntercept := candidateBestIntercept
                         bestWidth := candidateBestWidth
                         bestInnerUp := candidateBestInnerUp
                         bestInnerDn := candidateBestInnerDn
