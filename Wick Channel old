@@ -18,37 +18,38 @@ nyLunchStartTime = input.session("1200-1300", "", inline="NYLU", group=gSESSIONS
 showNyPm = input.bool(true, "NY PM", inline="NYPM", group=gSESSIONS)
 nyPmStartTime = input.session("1300-1600", "", inline="NYPM", group=gSESSIONS)
 scanBars = input.int(200, "Bars Forward", minval=20, maxval=500)
-wickRoundTicks = input.int(4, "Wick Offset Rounding (ticks)", minval=1, maxval=50)
+wickRoundTicks = input.int(1, "Wick Offset Rounding (ticks)", minval=1, maxval=50)
 midTouchTolTicks = input.int(1, "Midline Touch Tolerance (ticks)", minval=0, maxval=20)
 outerTouchTolTicks = input.int(1, "Outer Touch Tolerance (ticks)", minval=0, maxval=20)
 autoTolerance = input.bool(true, "Auto Tolerance Mode")
-autoMidTolRange = input.int(1, "Auto Mid Tolerance Range", minval=0, maxval=2)
-autoOuterTolRange = input.int(1, "Auto Outer Tolerance Range", minval=0, maxval=2)
-pivotLen = input.int(1, "Pivot Length", minval=1, maxval=20)
+autoMidTolRange = input.int(0, "Auto Mid Tolerance Range", minval=0, maxval=2)
+autoOuterTolRange = input.int(2, "Auto Outer Tolerance Range", minval=0, maxval=2)
+pivotLen = input.int(3, "Pivot Length", minval=1, maxval=20)
 minInsidePct = input.float(50.0, "Min Bodies Inside %", minval=0, maxval=100, step=1)
-displayMode = input.string("Both", "Display", options=["New", "Best", "Both"])
 
 outerRailWeight = input.float(4.0, "Outer Rail Weight", minval=0, step=0.5)
 innerRailWeight = input.float(2.0, "Inner Rail Weight", minval=0, step=0.5)
 midlineWeight   = input.float(1.0, "Midline Weight", minval=0, step=0.5)
 insideWeight    = input.float(0.5, "Inside % Weight", minval=0, step=0.5)
 lengthWeight    = input.float(0.05, "Length Weight", minval=0, step=0.01)
-innerOuterRatio = input.float(1.1, "Best outer/inner min ratio", minval = 1.0, step = 0.05)
-
+innerOuterRatio = input.float(1.1, "Best outer/inner min ratio", minval = 1.0, step = 0.1)
+var gVISUALS = "Visuals"
+displayMode = input.string("Both", "Display", options=["New", "Best", "Both"], group = gVISUALS)
+showLabels = input.bool(true, "Show labels", group = gVISUALS)
 showRegression = true
-extendBestRight = input.bool(true, "Extend Best Right")
-extendNewRight = input.bool(false, "Extend New Right")
-showDebug = input.bool(false, "Show Debug")
-showBestParallels = input.bool(true, "Show Best Parallels")
-showNewParallels = input.bool(false, "Show New Parallels")
-showExpandedZone = input.bool(true, "Show Expanded Zone")
-zoneTransparency = input.int(80, "Zone Transparency", minval=0, maxval=100)
-bestMidColor = input.color(color.red, "Best Midline Color")
-bestRailColor = input.color(color.rgb(0, 0, 253), "Best Rail Color")
-newMidColor = input.color(#00ff00, "New Midline Color")
-newRailColor = input.color(color.rgb(255, 60, 255), "New Rail Color")
-debugLabelColor = input.color(color.new(color.black, 75), "Debug Label Color")
-debugTextColor = input.color(color.new(color.white, 50), "Debug Text Color")
+extendBestRight = input.bool(true, "Extend Best Right", group = gVISUALS)
+extendNewRight = input.bool(false, "Extend New Right", group = gVISUALS)
+showDebug = input.bool(false, "Show Data", group = gVISUALS)
+showBestParallels = input.bool(true, "Show Best Parallels", group = gVISUALS)
+showNewParallels = input.bool(false, "Show New Parallels", group = gVISUALS)
+showExpandedZone = input.bool(true, "Show Expanded Zone", group = gVISUALS)
+zoneTransparency = input.int(80, "Zone Transparency", minval=0, maxval=100, group = gVISUALS)
+bestMidColor = input.color(color.red, "Best Midline Color", group = gVISUALS)
+bestRailColor = input.color(color.rgb(0, 0, 255), "Best Rail Color", group = gVISUALS)
+newMidColor = input.color(#00ff00, "New Midline Color", group = gVISUALS)
+newRailColor = input.color(color.rgb(255, 0, 255), "New Rail Color", group = gVISUALS)
+debugLabelColor = input.color(color.new(color.black, 75), "Info Label Color", group = gVISUALS)
+debugTextColor = input.color(color.new(color.white, 50), "Info Text Color", group = gVISUALS)
 
 f_exactTouch(off, y, tol) =>
     int safeHist = math.min(bar_index, 5000)
@@ -354,8 +355,8 @@ if barstate.islast
         int[] newLowCounts = array.new_int()
 
         int scanEnd = math.min(xEnd, bar_index)
-        int midTolStart = midTouchTolTicks
-        int midTolEnd = midTouchTolTicks
+        int midTolStart = autoTolerance ? math.max(midTouchTolTicks - autoMidTolRange, 0) : midTouchTolTicks
+        int midTolEnd   = autoTolerance ? math.min(midTouchTolTicks + autoMidTolRange, 20) : midTouchTolTicks        
         int outerTolStart = autoTolerance ? math.max(outerTouchTolTicks - autoOuterTolRange, 0) : outerTouchTolTicks
         int outerTolEnd = autoTolerance ? math.min(outerTouchTolTicks + autoOuterTolRange, 20) : outerTouchTolTicks
         float sumX = 0.0
