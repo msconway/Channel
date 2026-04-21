@@ -679,23 +679,26 @@ if barstate.islast
             float newRecalcBodies = newRecalcInsideCnt + newRecalcOutsideCnt
             newRecalcInsidePct := newRecalcBodies > 0 ? newRecalcInsideCnt * 100.0 / newRecalcBodies : 0.0
 
-            newExpandUp := newWidth
-            newExpandDn := newWidth
+            newExpandUp := na
+            newExpandDn := na
             if array.size(newHighOffsets) > 0 and array.size(newHighCounts) > 0
                 for i = 0 to array.size(newHighOffsets) - 1
                     if i < array.size(newHighCounts)
                         float offP = array.get(newHighOffsets, i)
                         int cntP = array.get(newHighCounts, i)
-                        if cntP >= 2 and offP >= newWidth
-                            newExpandUp := math.max(newExpandUp, offP)
-            newExpandHits := 0
+                        if cntP >= 2 and offP > newWidth * innerOuterRatio
+                            newExpandUp := na(newExpandUp) ? offP : math.max(newExpandUp, offP)
+
             if array.size(newLowOffsets) > 0 and array.size(newLowCounts) > 0
                 for i = 0 to array.size(newLowOffsets) - 1
                     if i < array.size(newLowCounts)
                         float offP = array.get(newLowOffsets, i)
                         int cntP = array.get(newLowCounts, i)
-                        if cntP >= 2 and offP >= newWidth
-                            newExpandDn := math.max(newExpandDn, offP)
+                        if cntP >= 2 and offP > newWidth * innerOuterRatio
+                            newExpandDn := na(newExpandDn) ? offP : math.max(newExpandDn, offP)
+
+            newExpandHits := (not na(newExpandUp) or not na(newExpandDn)) ? f_count_touch_hits(p1x, xEnd, newSlope, newIntercept, nz(newExpandUp, 10e10), nz(newExpandDn, 10e10), newMidTol, newOuterTol, safeHist, false, true) : 0
+
 
         if na(bestSlope) and not na(lastValidBestSlope)
             bestSlope := lastValidBestSlope
