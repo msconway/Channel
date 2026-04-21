@@ -5,8 +5,10 @@ float atr14_global = ta.atr(14)
 p1Mode = input.string("Sessions", "P1 Mode", options=["Manual", "Sessions"])
 const int DEFAULT_MANUAL_P1 = timestamp("2026-01-01 00:00 +0000")
 anchorTime = input.time(DEFAULT_MANUAL_P1, "Manual P1 Time", confirm=true)
-sessionTimezone = input.string("America/New_York", "Session Timezone")
 var gSESSIONS = "Sessions"
+//sessionTimezone = input.string("America/New_York", "Session Timezone", group=gSESSIONS)
+sessionTimezone = string("America/New_York")
+
 showAsia = input.bool(true, "Asia", inline="ASIA", group=gSESSIONS)
 asiaStartTime = input.session("2000-0000", "", inline="ASIA", group=gSESSIONS)
 showLondon = input.bool(true, "London", inline="LONDON", group=gSESSIONS)
@@ -18,29 +20,38 @@ nyLunchStartTime = input.session("1200-1300", "", inline="NYLU", group=gSESSIONS
 showNyPm = input.bool(true, "NY PM", inline="NYPM", group=gSESSIONS)
 nyPmStartTime = input.session("1300-1600", "", inline="NYPM", group=gSESSIONS)
 scanBars = input.int(200, "Bars Forward", minval=20, maxval=500)
-wickRoundTicks = input.int(4, "Wick Offset Rounding (ticks)", minval=1, maxval=50)
+wickRoundTicks = input.int(1, "Wick Offset Rounding (ticks)", minval=1, maxval=50)
 midTouchTolTicks = input.int(1, "Midline Touch Tolerance (ticks)", minval=0, maxval=20)
 outerTouchTolTicks = input.int(1, "Outer Touch Tolerance (ticks)", minval=0, maxval=20)
 autoTolerance = input.bool(true, "Auto Tolerance Mode")
-autoMidTolRange = input.int(1, "Auto Mid Tolerance Range", minval=0, maxval=2)
-autoOuterTolRange = input.int(1, "Auto Outer Tolerance Range", minval=0, maxval=2)
-pivotLen = input.int(1, "Pivot Length", minval=1, maxval=20)
+autoMidTolRange = input.int(0, "Auto Mid Tolerance Range", minval=0, maxval=2)
+autoOuterTolRange = input.int(2, "Auto Outer Tolerance Range", minval=0, maxval=2)
+pivotLen = input.int(3, "Pivot Length", minval=1, maxval=20)
 minInsidePct = input.float(50.0, "Min Bodies Inside %", minval=0, maxval=100, step=1)
-displayMode = input.string("Both", "Display", options=["New", "Best", "Both"])
+
+outerRailWeight = input.float(4.0, "Outer Rail Weight", minval=0, step=0.5)
+innerRailWeight = input.float(2.0, "Inner Rail Weight", minval=0, step=0.5)
+midlineWeight   = input.float(1.0, "Midline Weight", minval=0, step=0.5)
+insideWeight    = input.float(0.5, "Inside % Weight", minval=0, step=0.5)
+lengthWeight    = input.float(0.05, "Length Weight", minval=0, step=0.01)
+innerOuterRatio = input.float(1.1, "Best outer/inner min ratio", minval = 1.0, step = 0.1)
+var gVISUALS = "Visuals"
+displayMode = input.string("Both", "Display", options=["New", "Best", "Both"], group = gVISUALS)
+showLabels = input.bool(true, "Show Touch Labels", group = gVISUALS)
+showDebug = input.bool(false, "Show Data Label", group = gVISUALS)
 showRegression = true
-extendBestRight = input.bool(true, "Extend Best Right")
-extendNewRight = input.bool(false, "Extend New Right")
-showDebug = input.bool(false, "Show Debug")
-showBestParallels = input.bool(true, "Show Best Parallels")
-showNewParallels = input.bool(false, "Show New Parallels")
-showExpandedZone = input.bool(true, "Show Expanded Zone")
-zoneTransparency = input.int(80, "Zone Transparency", minval=0, maxval=100)
-bestMidColor = input.color(color.red, "Best Midline Color")
-bestRailColor = input.color(color.rgb(0, 0, 253), "Best Rail Color")
-newMidColor = input.color(#00ff00, "New Midline Color")
-newRailColor = input.color(color.rgb(255, 60, 255), "New Rail Color")
-debugLabelColor = input.color(color.new(color.black, 75), "Debug Label Color")
-debugTextColor = input.color(color.new(color.white, 50), "Debug Text Color")
+extendBestRight = input.bool(true, "Extend Best Right", group = gVISUALS)
+extendNewRight = input.bool(false, "Extend New Right", group = gVISUALS)
+showBestParallels = input.bool(true, "Show Best Parallels", group = gVISUALS)
+showNewParallels = input.bool(false, "Show New Parallels", group = gVISUALS)
+showExpandedZone = input.bool(true, "Show Expanded Zone", group = gVISUALS)
+zoneTransparency = input.int(80, "Zone Transparency", minval=0, maxval=100, group = gVISUALS)
+bestMidColor = input.color(color.red, "Best Midline Color", group = gVISUALS)
+bestRailColor = input.color(color.rgb(0, 0, 255), "Best Rail Color", group = gVISUALS)
+newMidColor = input.color(#00ff00, "New Midline Color", group = gVISUALS)
+newRailColor = input.color(color.rgb(255, 0, 255), "New Rail Color", group = gVISUALS)
+debugLabelColor = input.color(color.new(color.black, 75), "Data Label Color", group = gVISUALS)
+debugTextColor = input.color(color.new(color.white, 50), "Data Text Color", group = gVISUALS)
 
 f_exactTouch(off, y, tol) =>
     int safeHist = math.min(bar_index, 5000)
@@ -113,6 +124,8 @@ var label statusLbl = na
 var float lastValidBestSlope = na
 var float lastValidBestIntercept = na
 var float lastValidBestWidth = na
+var float lastValidBestInnerUp = na
+var float lastValidBestInnerDn = na
 var float lastValidBestExpandUp = na
 var float lastValidBestExpandDn = na
 var string lastValidBestKind = na
@@ -184,7 +197,7 @@ f_draw_channel(bool shouldDraw, int p1x, int xEnd, float slope, float intercept,
 
         // Channel-specific debug labels removed; using one combined status label only.
 
-if barstate.islast and barstate.isconfirmed
+if barstate.islast
     int safeHist = math.min(bar_index, 5000)
     if barstate.isnew or na(pivotCacheLen) or pivotCacheLen != pivotLen
         f_refresh_pivot_flags(pivotHighFlags, pivotLowFlags, safeHist, pivotLen)
@@ -294,9 +307,6 @@ if barstate.islast and barstate.isconfirmed
             barsSinceP1 := 0
         int maxForwardBars = math.min(scanBars, math.min(safeHist, barsSinceP1))
         int xEnd = math.min(bar_index, p1x + maxForwardBars)
-        int scanLeft = p1x
-        int scanRight = xEnd
-        bool allowFallback = false
         int len = xEnd - p1x + 1
         float roundStep = wickRoundTicks * syminfo.mintick
 
@@ -304,6 +314,8 @@ if barstate.islast and barstate.isconfirmed
         float bestSlope = na
         float bestIntercept = na
         float bestWidth = na
+        float bestInnerUp = na
+        float bestInnerDn = na
         string bestKind = ""
         int bestMidTouches = 0
         int bestRailHits = 0
@@ -328,6 +340,8 @@ if barstate.islast and barstate.isconfirmed
         float newSlope = na
         float newIntercept = na
         float newWidth = na
+        float newInnerUp = na
+        float newInnerDn = na
         string newKind = ""
         int newMidTouches = 0
         int newRailHits = 0
@@ -349,29 +363,30 @@ if barstate.islast and barstate.isconfirmed
         int[] newLowCounts = array.new_int()
 
         int scanEnd = math.min(xEnd, bar_index)
-        int midTolStart = midTouchTolTicks
-        int midTolEnd = midTouchTolTicks
+        int midTolStart = autoTolerance ? math.max(midTouchTolTicks - autoMidTolRange, 0) : midTouchTolTicks
+        int midTolEnd   = autoTolerance ? math.min(midTouchTolTicks + autoMidTolRange, 20) : midTouchTolTicks        
         int outerTolStart = autoTolerance ? math.max(outerTouchTolTicks - autoOuterTolRange, 0) : outerTouchTolTicks
         int outerTolEnd = autoTolerance ? math.min(outerTouchTolTicks + autoOuterTolRange, 20) : outerTouchTolTicks
-        for xCur = scanLeft + 10 to scanRight
+        float sumX = 0.0
+        float sumY = 0.0
+        float sumXY = 0.0
+        float sumXX = 0.0
+
+        for xCur = p1x to scanEnd
+            float x = xCur - p1x
+            int off = bar_index - xCur
+            float y = off >= 0 and off <= safeHist ? close[off] : close
+
+            sumX += x
+            sumY += y
+            sumXY += x * y
+            sumXX += x * x
+
             int curLen = xCur - p1x + 1
             if curLen >= 10
-                float sumX = 0.0
-                float sumY = 0.0
-                float sumXY = 0.0
-                float sumXX = 0.0
-                for xb = p1x to xCur
-                    int off = bar_index - xb
-                    float x = xb - p1x
-                    float y = off >= 0 and off <= safeHist ? close[off] : close
-                    sumX += x
-                    sumY += y
-                    sumXY += x * y
-                    sumXX += x * x
                 float denom = curLen * sumXX - sumX * sumX
                 float slope = denom != 0 ? (curLen * sumXY - sumX * sumY) / denom : 0.0
                 float intercept = curLen > 0 ? (sumY - slope * sumX) / curLen : close
-
                 float candidateBestScore = na
                 float candidateBestWidth = na
                 string candidateBestKind = ""
@@ -388,7 +403,10 @@ if barstate.islast and barstate.isconfirmed
                 int[] candidateLowCounts = array.new_int()
                 int candidateBestMidTolTicks = na
                 int candidateBestOuterTolTicks = na
-
+                float candidateBestInnerUp = na
+                float candidateBestInnerDn = na
+                float candidateBestExpandUp = na
+                float candidateBestExpandDn = na
                 for midTolTicks = midTolStart to midTolEnd
                     float midTol = midTolTicks * syminfo.mintick
                     for outerTolTicks = outerTolStart to outerTolEnd
@@ -491,30 +509,41 @@ if barstate.islast and barstate.isconfirmed
                                     fullOutsideCnt += 1
                             float fullBodies = fullInsideCnt + fullOutsideCnt
                             float fullInsidePct = fullBodies > 0 ? fullInsideCnt * 100.0 / fullBodies : 0.0
-                            float curExpandUp = nz(curBestUpper, curBestWidth)
-                            float curExpandDn = nz(curBestLower, curBestWidth)
+
+                            float curExpandUp = na
+                            float curExpandDn = na
                             int curExpandHits = 0
-                            if array.size(highBins) > 0 and array.size(highCounts) > 0
-                                int maxLoop = math.min(array.size(highBins), 20)
-                                for i = 0 to maxLoop - 1
-                                    if i < array.size(highCounts)
-                                        float offP = array.get(highBins, i)
-                                        int cntP = array.get(highCounts, i)
-                                        if cntP >= 2 and offP >= curBestWidth
-                                            curExpandUp := math.max(curExpandUp, offP)
-                            if array.size(lowBins) > 0 and array.size(lowCounts) > 0
-                                int maxLoop = math.min(array.size(lowBins), 20)
-                                for i = 0 to maxLoop - 1
-                                    if i < array.size(lowCounts)
-                                        float offP = array.get(lowBins, i)
-                                        int cntP = array.get(lowCounts, i)
-                                        if cntP >= 2 and offP >= curBestWidth
-                                            curExpandDn := math.max(curExpandDn, offP)
-                            float railStart = math.min(curExpandUp, curExpandDn)
-                            float railExtreme = math.max(curExpandUp, curExpandDn)
-                            curExpandHits := f_count_touch_hits(p1x, xCur, slope, intercept, railExtreme, railExtreme, midTol, outerTol, math.min(safeHist, xCur - p1x + 1), false, true)
-                            if fullInsidePct >= minInsidePct
-                                float score = curExpandHits * 30 + curBestRailHits * 20 + midTouches * 10 + fullInsidePct * 0.5 + curLen * 0.05
+
+                            if not na(curBestWidth)
+                                if array.size(highBins) > 0 and array.size(highCounts) > 0
+                                    int maxLoopUp = math.min(array.size(highBins), 20)
+                                    for i = 0 to maxLoopUp - 1
+                                        if i < array.size(highCounts)
+                                            float offP = array.get(highBins, i)
+                                            int cntP = array.get(highCounts, i)
+                                            if cntP >= 2 and offP > curBestWidth * innerOuterRatio
+                                                curExpandUp := na(curExpandUp) ? offP : math.max(curExpandUp, offP)
+
+                                if array.size(lowBins) > 0 and array.size(lowCounts) > 0
+                                    int maxLoopDn = math.min(array.size(lowBins), 20)
+                                    for i = 0 to maxLoopDn - 1
+                                        if i < array.size(lowCounts)
+                                            float offP = array.get(lowBins, i)
+                                            int cntP = array.get(lowCounts, i)
+                                            if cntP >= 2 and offP > curBestWidth * innerOuterRatio
+                                                curExpandDn := na(curExpandDn) ? offP : math.max(curExpandDn, offP)
+
+                            bool hasUpperOuter = not na(curExpandUp)
+                            bool hasLowerOuter = not na(curExpandDn)
+                            bool curHasDistinctOuter = hasUpperOuter or hasLowerOuter
+
+                            if curHasDistinctOuter
+                                float scoreExpandUp = hasUpperOuter ? curExpandUp : na
+                                float scoreExpandDn = hasLowerOuter ? curExpandDn : na
+                                curExpandHits := f_count_touch_hits(p1x,xCur,slope,intercept, nz(scoreExpandUp, 10e10), nz(scoreExpandDn, 10e10), midTol,outerTol, math.min(safeHist, xCur - p1x + 1), false, true)
+
+                            if fullInsidePct >= minInsidePct and curHasDistinctOuter
+                                float score = curExpandHits * outerRailWeight + curBestRailHits * innerRailWeight + midTouches * midlineWeight + fullInsidePct * insideWeight + curLen * lengthWeight
                                 if na(candidateBestScore) or score > candidateBestScore
                                     candidateBestScore := score
                                     candidateBestWidth := curBestWidth
@@ -532,12 +561,17 @@ if barstate.islast and barstate.isconfirmed
                                     candidateLowCounts := array.copy(lowCounts)
                                     candidateBestMidTolTicks := midTolTicks
                                     candidateBestOuterTolTicks := outerTolTicks
-
+                                    candidateBestInnerUp := curBestUpper
+                                    candidateBestInnerDn := curBestLower
+                                    candidateBestExpandUp := curExpandUp
+                                    candidateBestExpandDn := curExpandDn
                 if not na(candidateBestScore)
                     newScore := candidateBestScore
                     newSlope := slope
                     newIntercept := intercept
                     newWidth := candidateBestWidth
+                    newInnerUp := candidateBestInnerUp
+                    newInnerDn := candidateBestInnerDn
                     newKind := candidateBestKind
                     newMidTouches := candidateBestMidTouches
                     newRailHits := candidateBestRailHits
@@ -550,7 +584,8 @@ if barstate.islast and barstate.isconfirmed
                     newHighCounts := array.copy(candidateHighCounts)
                     newLowOffsets := array.copy(candidateLowOffsets)
                     newLowCounts := array.copy(candidateLowCounts)
-                    newExpandDn := na
+                    newExpandUp := candidateBestExpandUp
+                    newExpandDn := candidateBestExpandDn
                     newExpandHits := candidateBestExpandHits
                     newChosenMidTolTicks := candidateBestMidTolTicks
                     newChosenOuterTolTicks := candidateBestOuterTolTicks
@@ -559,6 +594,8 @@ if barstate.islast and barstate.isconfirmed
                         bestSlope := slope
                         bestIntercept := intercept
                         bestWidth := candidateBestWidth
+                        bestInnerUp := candidateBestInnerUp
+                        bestInnerDn := candidateBestInnerDn
                         bestKind := candidateBestKind
                         bestMidTouches := candidateBestMidTouches
                         bestRailHits := candidateBestRailHits
@@ -571,54 +608,26 @@ if barstate.islast and barstate.isconfirmed
                         bestHighCounts := array.copy(candidateHighCounts)
                         bestLowOffsets := array.copy(candidateLowOffsets)
                         bestLowCounts := array.copy(candidateLowCounts)
-                        bestExpandDn := na
+                        bestExpandUp := candidateBestExpandUp
+                        bestExpandDn := candidateBestExpandDn
                         bestExpandHits := candidateBestExpandHits
                         bestChosenMidTolTicks := candidateBestMidTolTicks
                         bestChosenOuterTolTicks := candidateBestOuterTolTicks
-        if na(bestScore)
-            scanLeft := math.max(0, p1x - 50)
-            for xCur = scanLeft + 10 to scanRight
-                int curLen = xCur - scanLeft + 1
-                if curLen >= 10
-                    float sumX = 0.0
-                    float sumY = 0.0
-                    float sumXY = 0.0
-                    float sumXX = 0.0
-                    for xb = scanLeft to xCur
-                        int off = bar_index - xb
-                        float x = xb - scanLeft
-                        float y = off >= 0 and off <= safeHist ? close[off] : close
-                        sumX += x
-                        sumY += y
-                        sumXY += x * y
-                        sumXX += x * x
-                    float denom = curLen * sumXX - sumX * sumX
-                    float slope = denom != 0 ? (curLen * sumXY - sumX * sumY) / denom : 0.0
-                    float intercept = curLen > 0 ? (sumY - slope * sumX) / curLen : close
-                    float[] highBins = array.new_float()
-                    int[] highCounts = array.new_int()
-                    float[] lowBins = array.new_float()
-                    int[] lowCounts = array.new_int()
-                    int midTouches = 0
-                    int totalBars = 0
-                    for xb = scanLeft to xCur
-                        int off = bar_index - xb
-                        totalBars += 1
-                        float midY = intercept + slope * (xb - scanLeft)
-                        bool isPivotHigh = f_is_pivot_high_off(off, safeHist)
-                        bool isPivotLow = f_is_pivot_low_off(off, safeHist)
-                        bool pivotMidTouch = (isPivotHigh and off >= 0 and off <= safeHist and math.abs(high[off] - midY) <= midTouchTolTicks * syminfo.mintick) or (isPivotLow and off >= 0 and off <= safeHist and math.abs(low[off] - midY) <= midTouchTolTicks * syminfo.mintick)
-                        if pivotMidTouch
-                            midTouches += 1
-                    if midTouches > 0
-                        bestScore := 0
-                        bestSlope := slope
-                        bestIntercept := intercept
-                        bestWidth := syminfo.mintick
-                        bestKind := "FB"
-                        bestMidTouches := midTouches
-                        bestLen := curLen
-                        bestTotalBars := totalBars
+        if not na(bestInnerUp) and not na(bestInnerDn)
+            float bestRecenterShift = (bestInnerUp - bestInnerDn) * 0.5
+            float bestRecenterWidth = (bestInnerUp + bestInnerDn) * 0.5
+            bestIntercept += bestRecenterShift
+            bestWidth := bestRecenterWidth
+            bestInnerUp := bestRecenterWidth
+            bestInnerDn := bestRecenterWidth
+
+        if not na(newInnerUp) and not na(newInnerDn)
+            float newRecenterShift = (newInnerUp - newInnerDn) * 0.5
+            float newRecenterWidth = (newInnerUp + newInnerDn) * 0.5
+            newIntercept += newRecenterShift
+            newWidth := newRecenterWidth
+            newInnerUp := newRecenterWidth
+            newInnerDn := newRecenterWidth
         float bestMidTol = nz(bestChosenMidTolTicks, midTouchTolTicks) * syminfo.mintick
         float bestOuterTol = nz(bestChosenOuterTolTicks, outerTouchTolTicks) * syminfo.mintick
         float newMidTol = nz(newChosenMidTolTicks, midTouchTolTicks) * syminfo.mintick
@@ -628,8 +637,8 @@ if barstate.islast and barstate.isconfirmed
             for xb = p1x to xEnd
                 int off = bar_index - xb
                 float midY = bestIntercept + bestSlope * (xb - p1x)
-                float topY = midY + bestWidth
-                float botY = midY - bestWidth
+                float topY = midY + nz(bestInnerUp, bestWidth)
+                float botY = midY - nz(bestInnerDn, bestWidth)
                 float bodyLo = math.min(open[off], close[off])
                 float bodyHi = math.max(open[off], close[off])
                 if bodyLo >= botY and bodyHi <= topY
@@ -639,26 +648,27 @@ if barstate.islast and barstate.isconfirmed
             float bestRecalcBodies = bestRecalcInsideCnt + bestRecalcOutsideCnt
             bestRecalcInsidePct := bestRecalcBodies > 0 ? bestRecalcInsideCnt * 100.0 / bestRecalcBodies : 0.0
 
-            bestExpandUp := bestWidth
-            bestExpandDn := bestWidth
+            bestExpandUp := na
+            bestExpandDn := na
             if array.size(bestHighOffsets) > 0 and array.size(bestHighCounts) > 0
                 for i = 0 to array.size(bestHighOffsets) - 1
                     if i < array.size(bestHighCounts)
                         float offP = array.get(bestHighOffsets, i)
                         int cntP = array.get(bestHighCounts, i)
-                        if cntP >= 2 and offP >= bestWidth
-                            bestExpandUp := math.max(bestExpandUp, offP)
-            bestExpandHits := 0
+                        if cntP >= 2 and offP > bestWidth * innerOuterRatio
+                            bestExpandUp := na(bestExpandUp) ? offP : math.max(bestExpandUp, offP)
+
             if array.size(bestLowOffsets) > 0 and array.size(bestLowCounts) > 0
                 for i = 0 to array.size(bestLowOffsets) - 1
                     if i < array.size(bestLowCounts)
                         float offP = array.get(bestLowOffsets, i)
                         int cntP = array.get(bestLowCounts, i)
-                        if cntP >= 2 and offP >= bestWidth
-                            bestExpandDn := math.max(bestExpandDn, offP)
-            bestExpandHits := f_count_touch_hits(p1x, xEnd, bestSlope, bestIntercept, bestExpandUp, bestExpandDn, bestMidTol, bestOuterTol, safeHist, false, true)
+                        if cntP >= 2 and offP > bestWidth * innerOuterRatio
+                            bestExpandDn := na(bestExpandDn) ? offP : math.max(bestExpandDn, offP)
 
-        if showDebug and not na(bestSlope) and not na(bestWidth)
+            bestExpandHits := (not na(bestExpandUp) or not na(bestExpandDn)) ? f_count_touch_hits(p1x, xEnd, bestSlope, bestIntercept, nz(bestExpandUp, 10e10), nz(bestExpandDn, 10e10), bestMidTol, bestOuterTol, safeHist, false, true) : 0
+
+        if showLabels and not na(bestSlope) and not na(bestWidth)
             for xbDbg = p1x to xEnd
                 int offDbg = bar_index - xbDbg
                 float midYDbg = bestIntercept + bestSlope * (xbDbg - p1x)
@@ -666,8 +676,8 @@ if barstate.islast and barstate.isconfirmed
                 bool pivotLowDbg = f_is_pivot_low_off(offDbg, safeHist)
                 bool midTouchHighDbg = pivotHighDbg and offDbg >= 0 and offDbg <= safeHist and math.abs(high[offDbg] - midYDbg) <= bestMidTol
                 bool midTouchLowDbg = pivotLowDbg and offDbg >= 0 and offDbg <= safeHist and math.abs(low[offDbg] - midYDbg) <= bestMidTol
-                bool topRailTouchDbg = pivotHighDbg and offDbg >= 0 and offDbg <= safeHist and math.abs(high[offDbg] - (midYDbg + bestWidth)) <= bestOuterTol
-                bool botRailTouchDbg = pivotLowDbg and offDbg >= 0 and offDbg <= safeHist and math.abs(low[offDbg] - (midYDbg - bestWidth)) <= bestOuterTol
+                bool topRailTouchDbg = pivotHighDbg and offDbg >= 0 and offDbg <= safeHist and math.abs(high[offDbg] - (midYDbg + nz(bestInnerUp, bestWidth))) <= bestOuterTol
+                bool botRailTouchDbg = pivotLowDbg and offDbg >= 0 and offDbg <= safeHist and math.abs(low[offDbg] - (midYDbg - nz(bestInnerDn, bestWidth))) <= bestOuterTol
                 bool topExpandTouchDbg = pivotHighDbg and offDbg >= 0 and offDbg <= safeHist and not na(bestExpandUp) and math.abs(high[offDbg] - (midYDbg + bestExpandUp)) <= bestOuterTol
                 bool botExpandTouchDbg = pivotLowDbg and offDbg >= 0 and offDbg <= safeHist and not na(bestExpandDn) and math.abs(low[offDbg] - (midYDbg - bestExpandDn)) <= bestOuterTol
                 if midTouchHighDbg
@@ -676,19 +686,19 @@ if barstate.islast and barstate.isconfirmed
                     array.push(debugTouchLabels, label.new(xbDbg, low[offDbg], "ML", xloc=xloc.bar_index, yloc=yloc.price, style=label.style_label_up, color=color.new(color.yellow, 0), textcolor=color.black, size=size.tiny))
                 if topRailTouchDbg
                     array.push(debugTouchLabels, label.new(xbDbg, high[offDbg], "RH", xloc=xloc.bar_index, yloc=yloc.price, style=label.style_label_down, color=color.new(color.aqua, 0), textcolor=color.black, size=size.tiny))
+                else if topExpandTouchDbg
+                    array.push(debugTouchLabels, label.new(xbDbg, high[offDbg], "EH", xloc=xloc.bar_index, yloc=yloc.price, style=label.style_label_down, color=color.new(color.fuchsia, 0), textcolor=color.white, size=size.tiny))
                 if botRailTouchDbg
                     array.push(debugTouchLabels, label.new(xbDbg, low[offDbg], "RL", xloc=xloc.bar_index, yloc=yloc.price, style=label.style_label_up, color=color.new(color.aqua, 0), textcolor=color.black, size=size.tiny))
-                if topExpandTouchDbg
-                    array.push(debugTouchLabels, label.new(xbDbg, high[offDbg], "EH", xloc=xloc.bar_index, yloc=yloc.price, style=label.style_label_down, color=color.new(color.fuchsia, 0), textcolor=color.white, size=size.tiny))
-                if botExpandTouchDbg
+                else if botExpandTouchDbg
                     array.push(debugTouchLabels, label.new(xbDbg, low[offDbg], "EL", xloc=xloc.bar_index, yloc=yloc.price, style=label.style_label_up, color=color.new(color.fuchsia, 0), textcolor=color.white, size=size.tiny))
 
         if not na(newSlope) and not na(newWidth)
             for xb = p1x to xEnd
                 int off = bar_index - xb
                 float midY = newIntercept + newSlope * (xb - p1x)
-                float topY = midY + newWidth
-                float botY = midY - newWidth
+                float topY = midY + nz(newInnerUp, newWidth)
+                float botY = midY - nz(newInnerDn, newWidth)
                 float bodyLo = math.min(open[off], close[off])
                 float bodyHi = math.max(open[off], close[off])
                 if bodyLo >= botY and bodyHi <= topY
@@ -698,28 +708,33 @@ if barstate.islast and barstate.isconfirmed
             float newRecalcBodies = newRecalcInsideCnt + newRecalcOutsideCnt
             newRecalcInsidePct := newRecalcBodies > 0 ? newRecalcInsideCnt * 100.0 / newRecalcBodies : 0.0
 
-            newExpandUp := newWidth
-            newExpandDn := newWidth
+            newExpandUp := na
+            newExpandDn := na
             if array.size(newHighOffsets) > 0 and array.size(newHighCounts) > 0
                 for i = 0 to array.size(newHighOffsets) - 1
                     if i < array.size(newHighCounts)
                         float offP = array.get(newHighOffsets, i)
                         int cntP = array.get(newHighCounts, i)
-                        if cntP >= 2 and offP >= newWidth
-                            newExpandUp := math.max(newExpandUp, offP)
-            newExpandHits := 0
+                        if cntP >= 2 and offP > newWidth * innerOuterRatio
+                            newExpandUp := na(newExpandUp) ? offP : math.max(newExpandUp, offP)
+
             if array.size(newLowOffsets) > 0 and array.size(newLowCounts) > 0
                 for i = 0 to array.size(newLowOffsets) - 1
                     if i < array.size(newLowCounts)
                         float offP = array.get(newLowOffsets, i)
                         int cntP = array.get(newLowCounts, i)
-                        if cntP >= 2 and offP >= newWidth
-                            newExpandDn := math.max(newExpandDn, offP)
+                        if cntP >= 2 and offP > newWidth * innerOuterRatio
+                            newExpandDn := na(newExpandDn) ? offP : math.max(newExpandDn, offP)
+
+            newExpandHits := (not na(newExpandUp) or not na(newExpandDn)) ? f_count_touch_hits(p1x, xEnd, newSlope, newIntercept, nz(newExpandUp, 10e10), nz(newExpandDn, 10e10), newMidTol, newOuterTol, safeHist, false, true) : 0
+
 
         if na(bestSlope) and not na(lastValidBestSlope)
             bestSlope := lastValidBestSlope
             bestIntercept := lastValidBestIntercept
             bestWidth := lastValidBestWidth
+            bestInnerUp := lastValidBestInnerUp
+            bestInnerDn := lastValidBestInnerDn
             bestExpandUp := lastValidBestExpandUp
             bestExpandDn := lastValidBestExpandDn
             bestKind := lastValidBestKind
@@ -735,8 +750,8 @@ if barstate.islast and barstate.isconfirmed
             bestRecalcInsidePct := lastValidBestRecalcInsidePct
 
         if showRegression
-            f_draw_channel(displayMode == "Best" or displayMode == "Both", p1x, xEnd, bestSlope, bestIntercept, bestWidth, bestExpandUp, bestExpandDn, math.max(bestExpandUp, bestExpandDn), bestScore, bestLen, bestTotalBars, bestInsideCnt, bestOutsideCnt, bestInsidePct, bestRecalcInsideCnt, bestRecalcOutsideCnt, bestRecalcInsidePct, bestMidTouches, bestRailHits, bestPredHits, bestKind, "BEST", bestMidColor, bestRailColor, extendBestRight, showBestParallels, showExpandedZone, showDebug, bestHighOffsets, bestHighCounts, bestLowOffsets, bestLowCounts)
-            f_draw_channel(displayMode == "New" or displayMode == "Both", p1x, xEnd, newSlope, newIntercept, newWidth, newExpandUp, newExpandDn, math.max(newExpandUp, newExpandDn), newScore, newLen, newTotalBars, newInsideCnt, newOutsideCnt, newInsidePct, newRecalcInsideCnt, newRecalcOutsideCnt, newRecalcInsidePct, newMidTouches, newRailHits, newPredHits, newKind, "NEW", newMidColor, newRailColor, extendNewRight, showNewParallels, showExpandedZone, showDebug, newHighOffsets, newHighCounts, newLowOffsets, newLowCounts)
+            f_draw_channel(displayMode == "Best" or displayMode == "Both", p1x, xEnd, bestSlope, bestIntercept, bestWidth, bestExpandUp, bestExpandDn, nz(math.max(bestExpandUp, bestExpandDn), bestWidth), bestScore, bestLen, bestTotalBars, bestInsideCnt, bestOutsideCnt, bestInsidePct, bestRecalcInsideCnt, bestRecalcOutsideCnt, bestRecalcInsidePct, bestMidTouches, bestRailHits, bestPredHits, bestKind, "BEST", bestMidColor, bestRailColor, extendBestRight, showBestParallels, showExpandedZone, showDebug, bestHighOffsets, bestHighCounts, bestLowOffsets, bestLowCounts)
+            f_draw_channel(displayMode == "New" or displayMode == "Both", p1x, xEnd, newSlope, newIntercept, newWidth, newExpandUp, newExpandDn, nz(math.max(newExpandUp, newExpandDn), newWidth), newScore, newLen, newTotalBars, newInsideCnt, newOutsideCnt, newInsidePct, newRecalcInsideCnt, newRecalcOutsideCnt, newRecalcInsidePct, newMidTouches, newRailHits, newPredHits, newKind, "NEW", newMidColor, newRailColor, extendNewRight, showNewParallels, showExpandedZone, showDebug, newHighOffsets, newHighCounts, newLowOffsets, newLowCounts)
 
         string st = "mode=" + displayMode + " xEnd=" + str.tostring(xEnd) + "\n"
         st += na(bestScore) and not na(lastValidBestSlope) ? "Using last valid channel\n" : ""
