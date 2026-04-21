@@ -501,38 +501,39 @@ if barstate.islast
                                     fullOutsideCnt += 1
                             float fullBodies = fullInsideCnt + fullOutsideCnt
                             float fullInsidePct = fullBodies > 0 ? fullInsideCnt * 100.0 / fullBodies : 0.0
+
                             float curExpandUp = na
                             float curExpandDn = na
                             int curExpandHits = 0
-                            if array.size(highBins) > 0 and array.size(highCounts) > 0
-                                int maxLoop = math.min(array.size(highBins), 20)
-                                for i = 0 to maxLoop - 1
-                                    if i < array.size(highCounts)
-                                        float offP = array.get(highBins, i)
-                                        int cntP = array.get(highCounts, i)
-                                        if cntP >= 2 and offP > curBestWidth * innerOuterRatio
-                                            curExpandUp := na(curExpandUp) ? offP : math.max(curExpandUp, offP)
-                            if array.size(lowBins) > 0 and array.size(lowCounts) > 0
-                                int maxLoop = math.min(array.size(lowBins), 20)
-                                for i = 0 to maxLoop - 1
-                                    if i < array.size(lowCounts)
-                                        float offP = array.get(lowBins, i)
-                                        int cntP = array.get(lowCounts, i)
-                                        if cntP >= 2 and offP >= curBestWidth
-                                            curExpandDn := math.max(curExpandDn, offP)
-                            float railStart = math.min(curExpandUp, curExpandDn)
-                            float railExtreme = math.max(curExpandUp, curExpandDn)
-                            curExpandHits := f_count_touch_hits(p1x, xCur, slope, intercept, railExtreme, railExtreme, midTol, outerTol, math.min(safeHist, xCur - p1x + 1), false, true)
-                            bool curHasDistinctOuter = curExpandUp > curBestWidth * innerOuterRatio or curExpandDn > curBestWidth * innerOuterRatio
-                            if cntP >= 2 and offP > curBestWidth * innerOuterRatio
-                                curExpandDn := na(curExpandDn) ? offP : math.max(curExpandDn, offP)
+
+                            if not na(curBestWidth)
+                                if array.size(highBins) > 0 and array.size(highCounts) > 0
+                                    int maxLoopUp = math.min(array.size(highBins), 20)
+                                    for i = 0 to maxLoopUp - 1
+                                        if i < array.size(highCounts)
+                                            float offP = array.get(highBins, i)
+                                            int cntP = array.get(highCounts, i)
+                                            if cntP >= 2 and offP > curBestWidth * innerOuterRatio
+                                                curExpandUp := na(curExpandUp) ? offP : math.max(curExpandUp, offP)
+
+                                if array.size(lowBins) > 0 and array.size(lowCounts) > 0
+                                    int maxLoopDn = math.min(array.size(lowBins), 20)
+                                    for i = 0 to maxLoopDn - 1
+                                        if i < array.size(lowCounts)
+                                            float offP = array.get(lowBins, i)
+                                            int cntP = array.get(lowCounts, i)
+                                            if cntP >= 2 and offP > curBestWidth * innerOuterRatio
+                                                curExpandDn := na(curExpandDn) ? offP : math.max(curExpandDn, offP)
+
                             bool hasUpperOuter = not na(curExpandUp)
                             bool hasLowerOuter = not na(curExpandDn)
                             bool curHasDistinctOuter = hasUpperOuter or hasLowerOuter
+
                             if curHasDistinctOuter
                                 float scoreExpandUp = hasUpperOuter ? curExpandUp : na
                                 float scoreExpandDn = hasLowerOuter ? curExpandDn : na
-                                curExpandHits := f_count_touch_hits(p1x, xCur, slope, intercept,nz(scoreExpandUp, 10e10),nz(scoreExpandDn, 10e10),math.min(safeHist, xCur - p1x + 1),false, true)
+                                curExpandHits := f_count_touch_hits(p1x,xCur,slope,intercept, nz(scoreExpandUp, 10e10), nz(scoreExpandDn, 10e10), midTol,outerTol, math.min(safeHist, xCur - p1x + 1), false, true)
+
                             if fullInsidePct >= minInsidePct and curHasDistinctOuter
                                 float score = curExpandHits * outerRailWeight + curBestRailHits * innerRailWeight + midTouches * midlineWeight + fullInsidePct * insideWeight + curLen * lengthWeight
                                 if na(candidateBestScore) or score > candidateBestScore
