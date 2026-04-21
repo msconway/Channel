@@ -5,8 +5,10 @@ float atr14_global = ta.atr(14)
 p1Mode = input.string("Sessions", "P1 Mode", options=["Manual", "Sessions"])
 const int DEFAULT_MANUAL_P1 = timestamp("2026-01-01 00:00 +0000")
 anchorTime = input.time(DEFAULT_MANUAL_P1, "Manual P1 Time", confirm=true)
-sessionTimezone = input.string("America/New_York", "Session Timezone")
 var gSESSIONS = "Sessions"
+//sessionTimezone = input.string("America/New_York", "Session Timezone", group=gSESSIONS)
+sessionTimezone = string("America/New_York")
+
 showAsia = input.bool(true, "Asia", inline="ASIA", group=gSESSIONS)
 asiaStartTime = input.session("2000-0000", "", inline="ASIA", group=gSESSIONS)
 showLondon = input.bool(true, "London", inline="LONDON", group=gSESSIONS)
@@ -35,11 +37,11 @@ lengthWeight    = input.float(0.05, "Length Weight", minval=0, step=0.01)
 innerOuterRatio = input.float(1.1, "Best outer/inner min ratio", minval = 1.0, step = 0.1)
 var gVISUALS = "Visuals"
 displayMode = input.string("Both", "Display", options=["New", "Best", "Both"], group = gVISUALS)
-showLabels = input.bool(true, "Show labels", group = gVISUALS)
+showLabels = input.bool(true, "Show Touch Labels", group = gVISUALS)
+showDebug = input.bool(false, "Show Data Label", group = gVISUALS)
 showRegression = true
 extendBestRight = input.bool(true, "Extend Best Right", group = gVISUALS)
 extendNewRight = input.bool(false, "Extend New Right", group = gVISUALS)
-showDebug = input.bool(false, "Show Data", group = gVISUALS)
 showBestParallels = input.bool(true, "Show Best Parallels", group = gVISUALS)
 showNewParallels = input.bool(false, "Show New Parallels", group = gVISUALS)
 showExpandedZone = input.bool(true, "Show Expanded Zone", group = gVISUALS)
@@ -48,8 +50,8 @@ bestMidColor = input.color(color.red, "Best Midline Color", group = gVISUALS)
 bestRailColor = input.color(color.rgb(0, 0, 255), "Best Rail Color", group = gVISUALS)
 newMidColor = input.color(#00ff00, "New Midline Color", group = gVISUALS)
 newRailColor = input.color(color.rgb(255, 0, 255), "New Rail Color", group = gVISUALS)
-debugLabelColor = input.color(color.new(color.black, 75), "Info Label Color", group = gVISUALS)
-debugTextColor = input.color(color.new(color.white, 50), "Info Text Color", group = gVISUALS)
+debugLabelColor = input.color(color.new(color.black, 75), "Data Label Color", group = gVISUALS)
+debugTextColor = input.color(color.new(color.white, 50), "Data Text Color", group = gVISUALS)
 
 f_exactTouch(off, y, tol) =>
     int safeHist = math.min(bar_index, 5000)
@@ -622,7 +624,7 @@ if barstate.islast
                             bestExpandDn := math.max(bestExpandDn, offP)
             bestExpandHits := f_count_touch_hits(p1x, xEnd, bestSlope, bestIntercept, bestExpandUp, bestExpandDn, bestMidTol, bestOuterTol, safeHist, false, true)
 
-        if showDebug and not na(bestSlope) and not na(bestWidth)
+        if showLabels and not na(bestSlope) and not na(bestWidth)
             for xbDbg = p1x to xEnd
                 int offDbg = bar_index - xbDbg
                 float midYDbg = bestIntercept + bestSlope * (xbDbg - p1x)
