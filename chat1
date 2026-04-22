@@ -527,3 +527,90 @@ If you want, I can generate that “Patch Specification” block now so you can 
 ## Final instruction to a new coding model
 
 Use the latest working master file as the base. Apply only the explicit structural changes above. Do not simplify away the existing anchor/session/fallback framework. The goal is not a generic channel indicator; it is this specific Wick Geometry Channel architecture converted to an outside-in model while preserving its working operational scaffolding.
+
+----------------------
+
+Recommended section order
+Title and overview
+
+A single H1 like:
+# Wick Geometry Channel – Outside-In Specification
+
+One short paragraph: purpose of the indicator and that this document replaces chat history with a consolidated spec.
+
+Design Principles (the short summary file content)
+
+Use the Wick Geometry Channel – Design Principles section as the front matter.
+
+Keep all 10 sections (Purpose, Core ideas, Scaffolding, Outside-in construction, Rail and width selection, Orphans, Scoring, Failure modes, Guardrails, Implementation order).
+
+Patch Specification (Exact Changes)
+
+New H2: ## Patch Specification
+
+Under it, place the explicit patch text:
+
+Patch 1 — Replace regression slope with same-side pivot-pair slope voting (steps for collecting pivots, computing slopes, binning, winning slope, intercept).
+
+Patch 2 — Outer rail from extreme offset, not most-common bin (outermost ≥2 hits, inner densest, orphanOffsets/orphanCounts, persist across bars).
+
+Patch 3 — Draw orphan rails concurrently (loop orphanOffsets, dotted orange lines, added to drawnLines).
+
+Score change (insideFactor, new score formula, minInsidePct as hard floor, no ATR).
+
+Operational Scaffold (What Must Be Preserved)
+
+H2: ## Operational Scaffold to Preserve
+
+Bring in the bullet list describing:
+
+Session logic, manual anchor P1, bounded history window.
+
+Scan timing (barstate.islast), single redraw.
+
+Pivot-based detection and safe history bounds.
+
+lastValidBest and state handling.
+
+Drawing lifecycle: clear then draw midline, rails, fills.
+
+Failure Modes and Guardrails
+
+H2: ## Failure Modes and Guardrails
+
+Combine:
+
+Orphan persistence bug and fix.
+
+Winner-selection bug and requirement to allow first valid family to win.
+
+One-sided outer rail issue and mirroring rule.
+
+“Only orphans draw” mode and requirement that slope/intercept/width all resolve together.
+
+Acceptance Criteria & Test Checklist
+
+H2: ## Acceptance Criteria and Tests
+
+Short bullets:
+
+Slope from same-side pivot pairs.
+
+Width from outermost qualifying offsets.
+
+Orphans persisted and drawn as dotted orange lines.
+
+Score multiplicative with insideFactor; minInsidePct as hard floor.
+
+Existing session/anchor/fallback/draw logic preserved.
+
+Test for: no channels, only orphans, orphan disappearance, extremely rare channels.
+
+Appendix: Legacy Strategy Notes (optional)
+
+H2: ## Appendix: Legacy Regression-Based Behavior
+
+Briefly summarize (in 3–5 bullets) how the old regression-first model worked, only if you want to keep that history around.
+
+---------------------------------
+
