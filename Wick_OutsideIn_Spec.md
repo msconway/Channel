@@ -293,3 +293,57 @@ If you need to brief a new AI quickly, this paragraph is enough context:
 ## 7. Final instruction to a new coding model
 
 Use the latest working master file as the base. Apply only the explicit structural changes described above. Do **not** simplify away the existing anchor/session/fallback framework. The goal is not a generic channel indicator; it is this specific Wick Geometry Channel architecture converted to an outside-in model while preserving its proven operational scaffolding.
+
+### 1.3 Patch theme priority
+
+When deciding what to fix or implement next, treat these themes in priority order:
+
+1. Outside-in geometry  
+   - Outer rails propose the channel first.  
+   - Inner rails and midline organize and refine what the outer rails already define.
+
+2. Orphan rails  
+   - Clean up half-dead channels where one rail has lost its partner.  
+   - Preserve valid parallel structure (orphan offset families) as dotted orange lines.
+
+3. Best / New semantics  
+   - “New” = discovered or updated in the current scan.  
+   - “Best” = current selected winner after scoring and validation.  
+   - New must not overwrite Best unless it clearly wins under the rules.
+
+4. Shadows support  
+   - Use a consistent definition of candle shadows (upper/lower wicks) across bullish and bearish bars.  
+   - Decide whether rails use full wick extremes or shadow-based filters, and keep that behavior explicit.
+
+5. Validation & invalidation  
+   - After any rail move or winner change, re-validate the channel.  
+   - Reject channels that no longer satisfy width, pairing, touch, or continuity constraints.
+
+### 1.6 Orphan structure
+
+There are two distinct “orphan” concepts in this design:
+
+1. Orphan parallel families (geometry concept)  
+   - Any offset family with count ≥ 3 that does not win as the main outer rail.  
+   - Stored in persistent arrays:
+     - `var float[] orphanOffsets`
+     - `var int[] orphanCounts`  
+   - Drawn as thin, dotted orange lines around the channel midline.  
+   - Must persist across bars until explicitly invalidated by the lifecycle.
+
+2. Orphan channel rails (cleanup concept)  
+   - A half-dead channel where a rail’s paired partner is missing, invalid, or no longer consistent.  
+   - These rails must not keep acting as a full channel.  
+   - On each major update (channel rebuild, promotion, invalidation, or merge), detect unpaired rails and either:
+     - delete them, or
+     - demote them so they no longer participate in Best/New selection or scoring.
+    
+### 4.5 Best / New semantics
+
+- New = any candidate channel discovered or updated on the current scan.  
+- Best = the current selected winner after scoring and validation (often aligned with `lastValidBest`).  
+- Guardrails:
+  - A New candidate must not overwrite Best unless its score and validity clearly exceed Best under the defined rules.  
+  - When a New candidate fails validation after promotion, revert cleanly to the previous Best or to a neutral “no channel” state.  
+  - State transitions must be deterministic: the same bar sequence should always produce the same Best/New history.
+ 
